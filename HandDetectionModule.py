@@ -23,17 +23,10 @@ class HandDetection:
         image_in_rgb_format = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # Process the image with MediaPipe hands detection
-        results = self.hands.process(image_in_rgb_format)
+        self.results = self.hands.process(image_in_rgb_format)
 
-        if results.multi_hand_landmarks:
-            for hand_landmarks in results.multi_hand_landmarks:
-                # print hand landmark position in to terminal
-                for ID, LM in enumerate(hand_landmarks.landmark):
-                    # print(id, LM)
-                    h, w, c = image.shape
-                    cx, cy = int(LM.x * h), int(LM.y * w)
-                    print(ID, "-", cx, cy)
-
+        if self.results.multi_hand_landmarks:
+            for hand_landmarks in self.results.multi_hand_landmarks:
                 if draw:
                     self.mp_drawing.draw_landmarks(image, hand_landmarks,
                                                    self.mp_hands.HAND_CONNECTIONS)
@@ -42,6 +35,22 @@ class HandDetection:
         cv2.imshow("Image", image)
 
         return image
+
+    def locate_hands(self, image, hand_no=0, draw=True):
+        list_of_lm = []
+        if self.results.multi_hand_landmarks:
+            # select a hand
+            my_hand = self.results.multi_hand_landmarks[hand_no]
+            # store hand landmark position in to a list
+            for ID, LM in enumerate(my_hand.landmark):
+                h, w, c = image.shape
+                cx, cy = int(LM.x * h), int(LM.y * w)
+                list_of_lm.append([ID, "-", cx, cy])
+
+                # highlight the hand
+                if draw:
+                    cv2.circle(image, (cx, cy), 15, (255, 0, 255), cv2.FILLED)
+        return list_of_lm
 
 
 def main():
@@ -69,6 +78,12 @@ def main():
 
         # Display FPS on the image (consider using a more reliable method)
         cv2.putText(image, "FPS: " + str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+
+        # print hand landmark to terminal
+        list_of_lm = detector.locate_hands(image, 0, True)
+        if len(list_of_lm):
+            # can choose a certain landmark
+            print(list_of_lm[4])
 
         if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
             break
