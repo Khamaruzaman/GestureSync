@@ -40,7 +40,7 @@ with mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.5) a
         current_time = time.time()
         fps = 1 / (current_time - previous_time)
         previous_time = current_time
-        cv2.putText(img, "FPS: " + str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+        cv2.putText(img, f'FPS: {int(fps)}', (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
 
         # Display the image
         cv2.imshow("Image", img)
@@ -48,7 +48,7 @@ with mp_hands.Hands(min_detection_confidence=0.7, min_tracking_confidence=0.5) a
         # Move the mouse cursor to the right side of the screen
         # autopy.mouse.move(offset_x, 0)
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
+        if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
             break
 
 cap.release()

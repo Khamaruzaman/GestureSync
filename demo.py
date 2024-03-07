@@ -1,7 +1,7 @@
 import time
 import cv2
-import mediapipe as mp
-import HandDetectionModule as hdm
+# import mediapipe as mp
+import HandDetectionModule as HDM
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
     cap.set(cv2.CAP_PROP_FRAME_WIDTH, webcam_width)
     cap.set(cv2.CAP_PROP_FRAME_HEIGHT, webcam_height)
 
-    detector = hdm.HandDetection()
+    detector = HDM.HandDetection()
 
     while True:
         success, image = cap.read()
@@ -36,7 +36,7 @@ def main():
             # can choose a certain landmark
             print(list_of_lm[4])
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
+        if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
             break
 
     cap.release()

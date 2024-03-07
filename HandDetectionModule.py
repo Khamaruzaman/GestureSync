@@ -31,9 +31,6 @@ class HandDetection:
                     self.mp_drawing.draw_landmarks(image, hand_landmarks,
                                                    self.mp_hands.HAND_CONNECTIONS)
 
-        # Display the image
-        cv2.imshow("Image", image)
-
         return image
 
     def locate_hands(self, image, hand_no=0, draw=True):
@@ -44,8 +41,8 @@ class HandDetection:
             # store hand landmark position in to a list
             for ID, LM in enumerate(my_hand.landmark):
                 h, w, c = image.shape
-                cx, cy = int(LM.x * h), int(LM.y * w)
-                list_of_lm.append([ID, "-", cx, cy])
+                cx, cy = int(LM.x * w), int(LM.y * h)
+                list_of_lm.append([ID, cx, cy])
 
                 # highlight the hand
                 if draw:
@@ -85,7 +82,7 @@ def main():
             # can choose a certain landmark
             print(list_of_lm[4])
 
-        if cv2.waitKey(1) & 0xFF == ord('q'):  # Press 'q' to exit
+        if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
             break
 
     cap.release()
