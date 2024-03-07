@@ -82,6 +82,9 @@ def main():
             # can choose a certain landmark
             print(list_of_lm[4])
 
+        # Display the image
+        cv2.imshow("Image", image)
+
         if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
             break
 
