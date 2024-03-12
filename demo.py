@@ -31,7 +31,7 @@ def main():
         cv2.putText(image, "FPS: " + str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
 
         # print hand landmark to terminal
-        list_of_lm = detector.locate_hands(image, 0, True)
+        list_of_lm = detector.find_position(image, 0, True)
         if len(list_of_lm):
             # can choose a certain landmark
             print(list_of_lm[4])

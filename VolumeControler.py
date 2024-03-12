@@ -1,12 +1,8 @@
 import cv2
-import time
-
 import numpy as np
-
-import HandDetectionModule as HDM
-import math
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+import HandDetectionModule as HDM
 
 
 def main():
@@ -21,22 +17,11 @@ def main():
         print("Error opening webcam:", e)
         exit()
 
-    dectector = HDM.HandDetection()
+    detector = HDM.HandDetection(max_hands=1)
 
     devices = AudioUtilities.GetSpeakers()
     interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
     volume = interface.QueryInterface(IAudioEndpointVolume)
-    # volume.GetMute()
-    # volume.GetMasterVolumeLevel()
-    print(volume.GetVolumeRange())
-    volume_range = volume.GetVolumeRange()
-    max_range = volume_range[1]
-    min_range = volume_range[0]
-
-    previous_time = 0
-
-    vol_bar = 400
-    vol_per = 0
 
     while True:
         success, image = cap.read()
@@ -46,64 +31,62 @@ def main():
             break
 
         # Pass image to the `find_hands` method for processing
-        image = dectector.find_hands(image)
+        image = detector.find_hands(image)
 
         # gets landmark location of each point
-        lm_list = dectector.locate_hands(image, draw=False)
+        list_of_lm, bbox, image = detector.find_position(image, draw=True)
 
-        # Calculate FPS (frames per second)
-        current_time = time.time()
-        fps = 1 / (current_time - previous_time)
-        previous_time = current_time
+        # frame rate
+        image = detector.show_fps(image)
 
-        # Display FPS on image (properly indented)
-        cv2.putText(image, f'FPS: {int(fps)}', (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+        if len(list_of_lm):
+            # filter based on size
+            area = ((bbox[2] - bbox[0]) * (bbox[3] - bbox[1])) // 100
+            # print(area)
+            if 150 < area < 800:
 
-        if len(lm_list):
-            # print(lm_list[4], lm_list[8])  # print hand landmark of thumb and index finger to terminal
-            x1, y1 = lm_list[4][1], lm_list[4][2]
-            x2, y2 = lm_list[8][1], lm_list[8][2]
+                # draw line btw thump and index, find distance btw them
+                image, distance, line_info = detector.find_distance(image, 4, 8)
 
-            cv2.circle(image, (x1, y1), 5, (255, 0, 255), 5, cv2.FILLED)  # colour thumb fingertip
-            cv2.circle(image, (x2, y2), 5, (255, 0, 255), 5, cv2.FILLED)  # colour index fingertip
-            cv2.line(image, (x1, y1), (x2, y2), (0, 0, 0), 3)  # draw line btw the points
+                # covert volume
+                vol_bar = np.interp(distance, [50, 180], [400, 150])
+                vol_per = np.interp(distance, [50, 180], [0, 100])
 
-            # find center of line and colour it
-            cx, cy = (x2 + x1) // 2, (y2 + y1) // 2
-            cv2.circle(image, (cx, cy), 5, (255, 0, 255), 5, cv2.FILLED)
+                # reduce resolution to make smoother
+                smoothness = 10
+                vol_per = round(int(vol_per) / smoothness) * smoothness
 
-            # distance btw the two points
-            distance = math.hypot(x1 - x2, y1 - y2)
-            print(distance)
+                # check finger up
+                fingers = detector.fingers_up()
 
-            # colour center point green/red when distance is min/max
-            if distance < 50:
-                cv2.circle(image, (cx, cy), 5, (0, 255, 0), 5, cv2.FILLED)
-            elif distance >= 250:
-                cv2.circle(image, (cx, cy), 5, (0, 0, 255), 5, cv2.FILLED)
+                # if pinky up, set volume
+                if not fingers[4] and (fingers[2] and fingers[3]):
+                    volume.SetMasterVolumeLevelScalar(vol_per / 100, None)
 
-            # set volume according to distance
-            vol = np.interp(distance, [50, 250], [min_range, max_range])
-            volume.SetMasterVolumeLevel(vol, None)
+                # drawing
+                if distance < 50:  # colour center point green/red when distance is min/max
+                    cv2.circle(image, (line_info[4], line_info[5]), 5, (0, 255, 0), 5, cv2.FILLED)
+                elif distance >= 180:
+                    cv2.circle(image, (line_info[4], line_info[5]), 5, (0, 0, 255), 5, cv2.FILLED)
 
-            vol_bar = np.interp(distance, [50, 250], [400, 150])
-            vol_per = np.interp(distance, [50, 250], [0, 100])
+                cv2.putText(image, f'{int(vol_per)} %',
+                            (50, 450), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)  # volume percentage on screen
 
-        # volume percentage on screen
-        cv2.putText(image, f'{int(vol_per)} %', (50, 450), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+                cv2.rectangle(image, (50, 150), (85, 400), (255, 0, 0), 3)  # volume meter on screen
+                cv2.rectangle(image, (50, int(vol_bar)), (85, 400), (255, 0, 0), cv2.FILLED)
 
-        # volume meter on screen
-        cv2.rectangle(image, (50, 150), (85, 400), (255, 0, 0), 3)
-        cv2.rectangle(image, (50, int(vol_bar)), (85, 400), (255, 0, 0), cv2.FILLED)
+                current_volume = int(volume.GetMasterVolumeLevelScalar() * 100)
+                cv2.putText(image, f'Volume: {current_volume}', (400, 50), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
 
         # Display the image
-        cv2.imshow("Image", image)
+        cv2.imshow("GestureSync", image)
 
         if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
             break
 
     cap.release()
     cv2.destroyAllWindows()
+
 
 
 if __name__ == '__main__':

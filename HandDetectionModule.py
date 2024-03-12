@@ -1,3 +1,4 @@
+import math
 import time
 import cv2
 import mediapipe as mp
@@ -6,6 +7,11 @@ import mediapipe as mp
 class HandDetection:
     def __init__(self, mode=False, max_hands=2, model_complexity=1,
                  detection_confidence=0.7, tracking_confidence=0.5):
+        self.previous_time = 0
+        self.current_time = None
+        self.list_of_lm = None
+        self.results = None
+        self.tipIds = [4, 8, 12, 16, 20]
         self.mode = mode
         self.max_hands = max_hands
         self.model_complexity = model_complexity
@@ -33,8 +39,11 @@ class HandDetection:
 
         return image
 
-    def locate_hands(self, image, hand_no=0, draw=True):
-        list_of_lm = []
+    def find_position(self, image, hand_no=0, draw=True):
+        list_x = []
+        list_y = []
+        bbox = []
+        self.list_of_lm = []
         if self.results.multi_hand_landmarks:
             # select a hand
             my_hand = self.results.multi_hand_landmarks[hand_no]
@@ -42,17 +51,67 @@ class HandDetection:
             for ID, LM in enumerate(my_hand.landmark):
                 h, w, c = image.shape
                 cx, cy = int(LM.x * w), int(LM.y * h)
-                list_of_lm.append([ID, cx, cy])
+                list_x.append(cx)
+                list_y.append(cy)
+                self.list_of_lm.append([ID, cx, cy])
 
                 # highlight the hand
                 if draw:
-                    cv2.circle(image, (cx, cy), 15, (255, 0, 255), cv2.FILLED)
-        return list_of_lm
+                    cv2.circle(image, (cx, cy), 5, (255, 0, 255), 1)
+            x_min, x_max = min(list_x), max(list_x)
+            y_min, y_max = min(list_y), max(list_y)
+            bbox = [x_min, y_min, x_max, y_max]
+            if draw:
+                cv2.rectangle(image, (bbox[0] - 10, bbox[1] - 10), (bbox[2] + 10, bbox[3] + 10), (0, 255, 0), 2)
+        return self.list_of_lm, bbox, image
+
+    def fingers_up(self):
+        fingers = []
+        # Thumb
+        if self.list_of_lm[self.tipIds[0]][1] > self.list_of_lm[self.tipIds[0] - 1][1]:
+            fingers.append(1)
+        else:
+            fingers.append(0)
+        # 4 Fingers
+        for ID in range(1, 5):
+            if self.list_of_lm[self.tipIds[ID]][2] < self.list_of_lm[self.tipIds[ID] - 2][2]:
+                fingers.append(1)
+            else:
+                fingers.append(0)
+        return fingers
+
+    def show_fps(self, image):
+        # Calculate FPS (frames per second)
+        self.current_time = time.time()
+        fps = 1 / (self.current_time - self.previous_time)
+        self.previous_time = self.current_time
+
+        # Display FPS on image (properly indented)
+        cv2.putText(image, f'FPS: {int(fps)}', (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+
+        return image
+
+    def find_distance(self, image, point_1, point_2, draw=True):
+
+        x1, y1 = self.list_of_lm[point_1][1], self.list_of_lm[point_1][2]
+        x2, y2 = self.list_of_lm[point_2][1], self.list_of_lm[point_2][2]
+
+        # find center of line and colour it
+        cx, cy = (x2 + x1) // 2, (y2 + y1) // 2
+
+        if draw:
+            cv2.circle(image, (x1, y1), 5, (255, 0, 255), 5, cv2.FILLED)  # colour thumb fingertip
+            cv2.circle(image, (x2, y2), 5, (255, 0, 255), 5, cv2.FILLED)  # colour index fingertip
+            cv2.line(image, (x1, y1), (x2, y2), (0, 0, 0), 3)  # draw line btw the points
+            cv2.circle(image, (cx, cy), 5, (255, 0, 255), 5, cv2.FILLED)
+
+        # distance btw the two points
+        distance = math.hypot(x1 - x2, y1 - y2)
+
+        return image, distance, [x1, y1, x2, y2, cx, cy]
 
 
 def main():
-    previous_time = 0
-
     # Set webcam width and height for desired resolution
     webcam_width, webcam_height = 640, 480
 
@@ -68,19 +127,17 @@ def main():
         # Pass image to the `find_hands` method for processing
         image = detector.find_hands(image)
 
-        # Calculate FPS (frames per second)
-        current_time = time.time()
-        fps = 1 / (current_time - previous_time)
-        previous_time = current_time
-
-        # Display FPS on the image (consider using a more reliable method)
-        cv2.putText(image, "FPS: " + str(int(fps)), (10, 70), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)
+        image = detector.show_fps(image)
 
         # print hand landmark to terminal
-        list_of_lm = detector.locate_hands(image, 0, True)
+        list_of_lm, bbox, image = detector.find_position(image, 0, True)
         if len(list_of_lm):
             # can choose a certain landmark
-            print(list_of_lm[4])
+            # print(list_of_lm[4])
+            finger_up = detector.fingers_up()
+            fingers = sum(finger_up)
+            if len(finger_up):
+                print(f'{fingers} are up')
 
         # Display the image
         cv2.imshow("Image", image)
