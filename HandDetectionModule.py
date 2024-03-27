@@ -2,6 +2,9 @@ import math
 import time
 import cv2
 import mediapipe as mp
+import numpy as np
+from comtypes import CLSCTX_ALL
+from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 
 
 class HandDetection:
@@ -23,6 +26,7 @@ class HandDetection:
                                          self.model_complexity, self.detection_confidence,
                                          self.tracking_confidence)
         self.mp_drawing = mp.solutions.drawing_utils
+        self.bbox = []
 
     def find_hands(self, image, draw=True):
         # Convert the image to RGB format
@@ -42,7 +46,7 @@ class HandDetection:
     def find_position(self, image, hand_no=0, draw=True):
         list_x = []
         list_y = []
-        bbox = []
+
         self.list_of_lm = []
         if self.results.multi_hand_landmarks:
             # select a hand
@@ -60,10 +64,11 @@ class HandDetection:
                     cv2.circle(image, (cx, cy), 5, (255, 0, 255), 1)
             x_min, x_max = min(list_x), max(list_x)
             y_min, y_max = min(list_y), max(list_y)
-            bbox = [x_min, y_min, x_max, y_max]
+            self.bbox = [x_min, y_min, x_max, y_max]
             if draw:
-                cv2.rectangle(image, (bbox[0] - 10, bbox[1] - 10), (bbox[2] + 10, bbox[3] + 10), (0, 255, 0), 2)
-        return self.list_of_lm, bbox, image
+                cv2.rectangle(image, (self.bbox[0] - 10, self.bbox[1] - 10), (self.bbox[2] + 10, self.bbox[3] + 10),
+                              (0, 255, 0), 2)
+        return self.list_of_lm, self.bbox, image
 
     def fingers_up(self):
         fingers = []
@@ -110,6 +115,55 @@ class HandDetection:
 
         return image, distance, [x1, y1, x2, y2, cx, cy]
 
+    def volume_controller(self, image, draw=True):
+        devices = AudioUtilities.GetSpeakers()
+        interface = devices.Activate(IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
+        volume = interface.QueryInterface(IAudioEndpointVolume)
+
+        if len(self.list_of_lm):
+            # check finger up
+            fingers = self.fingers_up()
+
+            # do following if finger 2,3 is down and 4 is up
+            if fingers[4] and not (fingers[2] and fingers[3]):
+                # filter based on size
+                area = ((self.bbox[2] - self.bbox[0]) * (self.bbox[3] - self.bbox[1])) // 100
+
+                if 150 < area < 800:
+
+                    # draw line btw thump and index, find distance btw them
+                    image, distance, line_info = self.find_distance(image, 4, 8, draw=draw)
+
+                    # covert volume
+                    vol_bar = np.interp(distance, [50, 180], [400, 150])
+                    vol_per = np.interp(distance, [50, 180], [0, 100])
+
+                    # reduce resolution to make smoother
+                    smoothness = 10
+                    vol_per = round(int(vol_per) / smoothness) * smoothness
+
+                    # set volume
+                    volume.SetMasterVolumeLevelScalar(vol_per / 100, None)
+
+                    # drawing
+                    if draw:
+                        if distance < 50:  # colour center point green/red when distance is min/max
+                            cv2.circle(image, (line_info[4], line_info[5]), 5, (0, 255, 0), 5, cv2.FILLED)
+                        elif distance >= 180:
+                            cv2.circle(image, (line_info[4], line_info[5]), 5, (0, 0, 255), 5, cv2.FILLED)
+
+                        cv2.putText(image, f'{int(vol_per)} %',
+                                    (50, 450), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 0), 2)  # volume percentage on screen
+
+                        cv2.rectangle(image, (50, 150), (85, 400), (255, 0, 0), 3)  # volume meter on screen
+                        cv2.rectangle(image, (50, int(vol_bar)), (85, 400), (255, 0, 0), cv2.FILLED)
+
+                        current_volume = int(volume.GetMasterVolumeLevelScalar() * 100)
+                        cv2.putText(image, f'Volume: {current_volume}', (400, 50), cv2.FONT_HERSHEY_PLAIN,
+                                    2, (255, 0, 0), 2)
+
+        return image
+
 
 def main():
     # Set webcam width and height for desired resolution
@@ -138,6 +192,8 @@ def main():
             fingers = sum(finger_up)
             if len(finger_up):
                 print(f'{fingers} are up')
+
+        image = detector.volume_controller(image)
 
         # Display the image
         cv2.imshow("Image", image)
