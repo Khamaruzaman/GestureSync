@@ -27,6 +27,7 @@ class HandDetection:
                                          self.tracking_confidence)
         self.mp_drawing = mp.solutions.drawing_utils
         self.bbox = []
+        self.fingers = None
 
     def find_hands(self, image, draw=True):
         # Convert the image to RGB format
@@ -71,19 +72,19 @@ class HandDetection:
         return self.list_of_lm, self.bbox, image
 
     def fingers_up(self):
-        fingers = []
+        self.fingers = []
         # Thumb
         if self.list_of_lm[self.tipIds[0]][1] > self.list_of_lm[self.tipIds[0] - 1][1]:
-            fingers.append(1)
+            self.fingers.append(1)
         else:
-            fingers.append(0)
+            self.fingers.append(0)
         # 4 Fingers
         for ID in range(1, 5):
             if self.list_of_lm[self.tipIds[ID]][2] < self.list_of_lm[self.tipIds[ID] - 2][2]:
-                fingers.append(1)
+                self.fingers.append(1)
             else:
-                fingers.append(0)
-        return fingers
+                self.fingers.append(0)
+        return self.fingers
 
     def show_fps(self, image):
         # Calculate FPS (frames per second)
@@ -121,11 +122,9 @@ class HandDetection:
         volume = interface.QueryInterface(IAudioEndpointVolume)
 
         if len(self.list_of_lm):
-            # check finger up
-            fingers = self.fingers_up()
 
             # do following if finger 2,3 is down and 4 is up
-            if fingers[4] and not (fingers[2] and fingers[3]):
+            if self.fingers[4] and not (self.fingers[2] and self.fingers[3]):
                 # filter based on size
                 area = ((self.bbox[2] - self.bbox[0]) * (self.bbox[3] - self.bbox[1])) // 100
 
@@ -169,14 +168,22 @@ def main():
     # Set webcam width and height for desired resolution
     webcam_width, webcam_height = 640, 480
 
-    cap = cv2.VideoCapture(0)  # Use 0 for default webcam
-    cap.set(cv2.CAP_PROP_FRAME_WIDTH, webcam_width)
-    cap.set(cv2.CAP_PROP_FRAME_HEIGHT, webcam_height)
+    try:
+        cap = cv2.VideoCapture(0)  # Use 0 for default webcam
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, webcam_width)
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, webcam_height)
+    except Exception as e:
+        print("Error opening webcam:", e)
+        exit()
 
     detector = HandDetection()
 
     while True:
         success, image = cap.read()
+
+        if not success:
+            print("Error reading frame from webcam")
+            break
 
         # Pass image to the `find_hands` method for processing
         image = detector.find_hands(image)
