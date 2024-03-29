@@ -3,8 +3,11 @@ import time
 import cv2
 import mediapipe as mp
 import numpy as np
+# for volume control
 from comtypes import CLSCTX_ALL
 from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
+# for brightness control
+import screen_brightness_control as sbc
 
 
 class HandDetection:
@@ -163,10 +166,68 @@ class HandDetection:
 
         return image
 
+    def brightness_controller(self, image, draw=True):
+        """# get the brightness
+        brightness = sbc.get_brightness()
+        # get the brightness for the primary monitor
+        primary = sbc.get_brightness(display=0)
+
+        # set the brightness to 100%
+        sbc.set_brightness(100)
+        # set the brightness to 100% for the primary monitor
+        sbc.get_brightness(100, display=0)
+
+        # show the current brightness for each detected monitor
+        for monitor in sbc.list_monitors():
+            print(monitor, ':', sbc.get_brightness(display=monitor), '%')"""
+
+        if len(self.list_of_lm):
+
+            # do following if finger 3,4 is down and 2 is up
+            if self.fingers[2] and not (self.fingers[4] and self.fingers[3]):
+                # filter based on size
+                area = ((self.bbox[2] - self.bbox[0]) * (self.bbox[3] - self.bbox[1])) // 100
+
+                if 150 < area < 800:
+
+                    # draw line btw thump and index, find distance btw them
+                    image, distance, line_info = self.find_distance(image, 4, 8, draw=draw)
+
+                    # covert brightness
+                    bri_bar = np.interp(distance, [50, 180], [400, 150])
+                    bri_per = np.interp(distance, [50, 180], [0, 100])
+
+                    # reduce resolution to make smoother
+                    smoothness = 10
+                    bri_per = round(int(bri_per) / smoothness) * smoothness
+
+                    # set brightness
+                    sbc.set_brightness(bri_per)
+
+                    # drawing
+                    if draw:
+                        if distance < 50:  # colour center point green/red when distance is min/max
+                            cv2.circle(image, (line_info[4], line_info[5]), 5, (0, 255, 0), 5, cv2.FILLED)
+                        elif distance >= 180:
+                            cv2.circle(image, (line_info[4], line_info[5]), 5, (0, 0, 255), 5, cv2.FILLED)
+
+                        cv2.putText(image, f'{int(bri_per)} %',
+                                    (50, 450), cv2.FONT_HERSHEY_PLAIN, 2, (255, 0, 255),
+                                    2)  # volume percentage on screen
+
+                        cv2.rectangle(image, (50, 150), (85, 400), (255, 0, 255), 3)  # volume meter on screen
+                        cv2.rectangle(image, (50, int(bri_bar)), (85, 400), (255, 0, 255), cv2.FILLED)
+
+                        current_brightness = sbc.get_brightness()
+                        cv2.putText(image, f'Brightness: {current_brightness}', (400, 50), cv2.FONT_HERSHEY_PLAIN,
+                                    2, (255, 0, 255), 2)
+
+        return image
+
 
 def main():
     # Set webcam width and height for desired resolution
-    webcam_width, webcam_height = 640, 480
+    webcam_width, webcam_height = 1000, 600
 
     try:
         cap = cv2.VideoCapture(0)  # Use 0 for default webcam
@@ -193,14 +254,11 @@ def main():
         # print hand landmark to terminal
         list_of_lm, bbox, image = detector.find_position(image, 0, True)
         if len(list_of_lm):
-            # can choose a certain landmark
-            # print(list_of_lm[4])
-            finger_up = detector.fingers_up()
-            fingers = sum(finger_up)
-            if len(finger_up):
-                print(f'{fingers} are up')
+            detector.fingers_up()
 
         image = detector.volume_controller(image)
+
+        image = detector.brightness_controller(image)
 
         # Display the image
         cv2.imshow("Image", image)

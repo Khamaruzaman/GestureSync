@@ -32,9 +32,11 @@ def main():
         list_of_lm, bbox, image = detector.find_position(image, 0, False)
 
         if len(list_of_lm):
-            finger_up = detector.fingers_up()
+            detector.fingers_up()
 
         image = detector.volume_controller(image)
+
+        image = detector.brightness_controller(image)
 
         # Display the image
         cv2.imshow("Image", image)
