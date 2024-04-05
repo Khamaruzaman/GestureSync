@@ -127,7 +127,7 @@ class HandDetection:
         if len(self.list_of_lm):
 
             # do following if finger 2,3 is down and 4 is up
-            if self.fingers[4] and not (self.fingers[2] and self.fingers[3]):
+            if self.fingers[4] and not self.fingers[2] and not self.fingers[3]:
                 # filter based on size
                 area = ((self.bbox[2] - self.bbox[0]) * (self.bbox[3] - self.bbox[1])) // 100
 
@@ -184,7 +184,7 @@ class HandDetection:
         if len(self.list_of_lm):
 
             # do following if finger 3,4 is down and 2 is up
-            if self.fingers[2] and not (self.fingers[4] and self.fingers[3]):
+            if self.fingers[2] and not self.fingers[4] and not self.fingers[3]:
                 # filter based on size
                 area = ((self.bbox[2] - self.bbox[0]) * (self.bbox[3] - self.bbox[1])) // 100
 
