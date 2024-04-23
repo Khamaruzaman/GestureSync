@@ -9,6 +9,8 @@ from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
 # for brightness control
 import screen_brightness_control as sbc
 
+import autopy
+
 
 class HandDetection:
     def __init__(self, mode=False, max_hands=2, model_complexity=1,
@@ -31,6 +33,7 @@ class HandDetection:
         self.mp_drawing = mp.solutions.drawing_utils
         self.bbox = []
         self.fingers = None
+        self.plocX, self.plocY = 0, 0
 
     def find_hands(self, image, draw=True):
         # Convert the image to RGB format
@@ -127,7 +130,7 @@ class HandDetection:
         if len(self.list_of_lm):
 
             # do following if finger 2,3 is down and 4 is up
-            if self.fingers[4] and not self.fingers[2] and not self.fingers[3]:
+            if not self.fingers[4] and not self.fingers[2] and not self.fingers[3]:
                 # filter based on size
                 area = ((self.bbox[2] - self.bbox[0]) * (self.bbox[3] - self.bbox[1])) // 100
 
@@ -167,31 +170,18 @@ class HandDetection:
         return image
 
     def brightness_controller(self, image, draw=True):
-        """# get the brightness
-        brightness = sbc.get_brightness()
-        # get the brightness for the primary monitor
-        primary = sbc.get_brightness(display=0)
-
-        # set the brightness to 100%
-        sbc.set_brightness(100)
-        # set the brightness to 100% for the primary monitor
-        sbc.get_brightness(100, display=0)
-
-        # show the current brightness for each detected monitor
-        for monitor in sbc.list_monitors():
-            print(monitor, ':', sbc.get_brightness(display=monitor), '%')"""
 
         if len(self.list_of_lm):
 
             # do following if finger 3,4 is down and 2 is up
-            if self.fingers[2] and not self.fingers[4] and not self.fingers[3]:
+            if not self.fingers[1] and not self.fingers[2] and not self.fingers[3]:
                 # filter based on size
                 area = ((self.bbox[2] - self.bbox[0]) * (self.bbox[3] - self.bbox[1])) // 100
 
                 if 150 < area < 800:
 
                     # draw line btw thump and index, find distance btw them
-                    image, distance, line_info = self.find_distance(image, 4, 8, draw=draw)
+                    image, distance, line_info = self.find_distance(image, 4, 20, draw=draw)
 
                     # covert brightness
                     bri_bar = np.interp(distance, [50, 180], [400, 150])
@@ -223,6 +213,105 @@ class HandDetection:
                                     2, (255, 0, 255), 2)
 
         return image
+
+    def cursor_move(self, wCam, hCam):
+        wScr, hScr = autopy.screen.size()
+
+        frame_reduction = 100
+        smoothening = 7
+
+        if len(self.list_of_lm):
+            if self.fingers[1] == 1 and self.fingers[2] == 1 and self.fingers[3] == 0 and self.fingers[4] == 0 and \
+                    self.fingers[0] == 0:
+                mode = "move"
+                x1, y1 = self.list_of_lm[8][1:]
+                x = np.interp(x1, (frame_reduction, wCam - frame_reduction), (0, wScr))
+                y = np.interp(y1, (frame_reduction, hCam - frame_reduction), (0, hScr))
+                clocX = self.plocX + (x - self.plocX) / smoothening
+                clocY = self.plocY + (y - self.plocY) / smoothening
+                autopy.mouse.move(clocX, clocY)
+                self.plocX, self.plocY = clocX, clocY
+
+    # def cursor_move(self, image, wCam, hCam):
+    #     wScr, hScr = autopy.screen.size()
+    #
+    #     frame_reduction = 100
+    #     smoothening = 7
+    #
+    #     if len(self.list_of_lm):
+    #         if self.fingers[1] == 1 and self.fingers[2] == 0 and self.fingers[3] == 0 and self.fingers[4] == 0 and \
+    #                 self.fingers[0] == 0:
+    #             mode = "move"
+    #             x1, y1 = self.list_of_lm[8][1:]
+    #             x = np.interp(x1, (frame_reduction, wCam - frame_reduction), (-1, 1))  # Normalize to -1 to 1
+    #             y = np.interp(y1, (frame_reduction, hCam - frame_reduction), (-1, 1))  # Normalize to -1 to 1
+    #
+    #             # Calculate offset relative to center
+    #             center_x = wScr // 2
+    #             center_y = hScr // 2
+    #             offset_x = x * (wScr // 2)  # Scale offset based on screen width and normalized position
+    #             offset_y = y * (hScr // 2)  # Scale offset based on screen height and normalized position
+    #
+    #             # Apply smoothing
+    #             clocX = self.plocX + (offset_x - (self.plocX - center_x)) / smoothening
+    #             clocY = self.plocY + (offset_y - (self.plocY - center_y)) / smoothening
+    #
+    #             # Bound cursor position within screen limits
+    #             new_x = min(max(center_x + clocX, 0), wScr - 1)  # Clamp between 0 and screen width - 1
+    #             new_y = min(max(center_y + clocY, 0), hScr - 1)  # Clamp between 0 and screen height - 1
+    #
+    #             # Move cursor (avoiding out-of-bounds)
+    #             autopy.mouse.move(new_x, new_y)
+    #
+    #             self.plocX, self.plocY = new_x - center_x, new_y - center_y  # Update previous position with clamping
+    #     return image
+
+    # def left_click(self):
+    #     click_distance_threshold = 40
+    #     if len(self.list_of_lm):
+    #         if self.fingers[0] == 0 and self.fingers[1] == 1 and self.fingers[2] == 1 and self.fingers[3] == 0 and \
+    #                 self.fingers[4] == 0:
+    #
+    #             img, distance, x = self.find_distance(None, 8, 12, True)
+    #             # Click or right-click if distance is short
+    #             if distance < click_distance_threshold:
+    #                 autopy.mouse.click()
+    #                 print("left click", distance)
+    #
+    #             elif distance > click_distance_threshold * 2:
+    #                 autopy.mouse.click(autopy.mouse.Button.RIGHT)
+    #                 print("right click", distance)
+    #
+    #             self.wait(.3)
+    def click(self):
+        if len(self.list_of_lm):
+            if self.fingers[0] == 0 and self.fingers[1] == 0 and self.fingers[2] == 1 and self.fingers[3] == 0 and \
+                    self.fingers[4] == 0:
+
+                autopy.mouse.click()
+                print("left click")
+                self.wait(.3)
+
+            elif self.fingers[0] == 0 and self.fingers[1] == 1 and self.fingers[2] == 0 and self.fingers[3] == 0 and \
+                    self.fingers[4] == 0:
+                autopy.mouse.click(autopy.mouse.Button.RIGHT)
+                print("right click")
+                self.wait(.3)
+
+    # def right_click(self):
+    #     if len(self.list_of_lm):
+    #         if self.fingers[0] == 1 and self.fingers[1] == 0 and self.fingers[2] == 0 and self.fingers[3] == 0 and \
+    #                 self.fingers[4] == 1:
+    #             mode = "right_click"
+    #             # Perform right-click action
+    #             autopy.mouse.click(autopy.mouse.Button.RIGHT)
+    #             action_time = time.time()  # Record the time of the action
+
+    def wait(self, seconds):
+        current_time = time.time()
+        future_time = current_time + seconds
+        while time.time() < future_time:
+            pass  # Empty statement (does nothing)
 
 
 def main():
@@ -259,6 +348,10 @@ def main():
         image = detector.volume_controller(image)
 
         image = detector.brightness_controller(image)
+
+        detector.cursor_move(webcam_width, webcam_height)
+        detector.click()
+        # detector.right_click()
 
         # Display the image
         cv2.imshow("Image", image)
