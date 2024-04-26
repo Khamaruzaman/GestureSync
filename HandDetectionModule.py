@@ -64,6 +64,9 @@ class HandDetection:
 
         self.mode = 0
 
+        self.previous_position_x = 0
+        self.previous_position_y = 0
+
     def find_hands(self, image, draw=True):
         # Convert the image to RGB format
         image_in_rgb_format = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -285,10 +288,27 @@ class HandDetection:
                 current_x, current_y = self.list_of_lm[self.tipIds[1]][1], self.list_of_lm[self.tipIds[1]][2]
 
                 # if top_left_x < current_x < bottom_right_x and top_left_y < current_y < bottom_right_y:
-                dx = 50 if current_x > centre_x else -50
-                dy = 30 if current_y > centre_y else -30
+                # dx = 50 if current_x > self.previous_position_x else -50
+                # dy = 30 if current_y > self.previous_position_y else -30
+                if current_x > self.previous_position_x + 10:
+                    dx = 100
+                elif current_x < self.previous_position_x - 10:
+                    dx = -100
+                else:
+                    dx = 0
+
+                if current_y > self.previous_position_y + 10:
+                    dy = 100
+                elif current_y < self.previous_position_y - 10:
+                    dy = -100
+                else:
+                    dy = 0
+
                 pyautogui.FAILSAFE = False
                 pyautogui.moveRel(dx, dy, 0)
+
+                self.previous_position_x = current_x
+                self.previous_position_y = current_y
         return image
 
     def click(self):
@@ -489,60 +509,3 @@ class HandDetection:
                     time.sleep(0.5)
 
         return image
-
-
-def main():
-    # Set webcam width and height for desired resolution
-    webcam_width, webcam_height = 1200, 720
-
-    try:
-        cap = cv2.VideoCapture(0)  # Use 0 for default webcam
-        cap.set(cv2.CAP_PROP_FRAME_WIDTH, webcam_width)
-        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, webcam_height)
-    except Exception as e:
-        print("Error opening webcam:", e)
-        exit()
-
-    detector = HandDetection()
-
-    while True:
-        success, image = cap.read()
-
-        if not success:
-            print("Error reading frame from webcam")
-            break
-
-        # Pass image to the `find_hands` method for processing
-        image = detector.find_hands(image)
-        image = detector.show_fps(image)
-        # print hand landmark to terminal
-        list_of_lm, bbox, image = detector.find_position(image, 0, True)
-        if len(list_of_lm):
-            detector.fingers_up()
-
-        image = detector.mode_select(image, webcam_width)
-        if detector.mode == 0:
-            image = detector.volume_controller(image)
-        elif detector.mode == 1:
-            image = detector.brightness_controller(image)
-        elif detector.mode == 2:
-            # cv2.circle(image, (webcam_width // 2, webcam_height // 2), 10, (255, 0, 0))
-            image = detector.cursor_move(image, webcam_width, webcam_height)
-            detector.click()
-            detector.scroll()
-            # detector.click_and_drag()
-        elif detector.mode == 3:
-            image = detector.hand_keyboard(image)
-
-        # Display the image
-        cv2.imshow("Image", image)
-
-        if cv2.waitKey(1) & 0xFF == 27:  # Press 'Esc' to exit
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    main()

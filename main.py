@@ -1,10 +1,10 @@
+import HandDetectionModule as hdm
 import cv2
-import HandDetectionModule as HDM
 
 
 def main():
     # Set webcam width and height for desired resolution
-    webcam_width, webcam_height = 640, 480
+    webcam_width, webcam_height = 1200, 720
 
     try:
         cap = cv2.VideoCapture(0)  # Use 0 for default webcam
@@ -14,7 +14,7 @@ def main():
         print("Error opening webcam:", e)
         exit()
 
-    detector = HDM.HandDetection()
+    detector = hdm.HandDetection()
 
     while True:
         success, image = cap.read()
@@ -25,18 +25,25 @@ def main():
 
         # Pass image to the `find_hands` method for processing
         image = detector.find_hands(image)
-
         image = detector.show_fps(image)
-
         # print hand landmark to terminal
-        list_of_lm, bbox, image = detector.find_position(image, 0, False)
-
+        list_of_lm, bbox, image = detector.find_position(image, 0, True)
         if len(list_of_lm):
             detector.fingers_up()
 
-        image = detector.volume_controller(image)
-
-        image = detector.brightness_controller(image)
+        image = detector.mode_select(image, webcam_width)
+        if detector.mode == 0:
+            image = detector.volume_controller(image)
+        elif detector.mode == 1:
+            image = detector.brightness_controller(image)
+        elif detector.mode == 2:
+            # cv2.circle(image, (webcam_width // 2, webcam_height // 2), 10, (255, 0, 0))
+            image = detector.cursor_move(image, webcam_width, webcam_height)
+            detector.click()
+            detector.scroll()
+            # detector.click_and_drag()
+        elif detector.mode == 3:
+            image = detector.hand_keyboard(image)
 
         # Display the image
         cv2.imshow("Image", image)
