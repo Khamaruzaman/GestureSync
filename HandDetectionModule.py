@@ -49,23 +49,25 @@ class HandDetection:
             [
                 ["!", "@", "#", "$", "%", "^", "&", "*", "(", ")", "_", "+"],
                 ["Q", "W", "E", "R", "T", "Y", "U", "I", "O", "P", "<--"],
-                ["A", "S", "D", "F", "G", "H", "J", "K", "L", ":", "\"", "ENT"],
+                ["A", "S", "D", "F", "G", "H", "J", "K", "L", ":", "\""],
                 ["Z", "X", "C", "V", "B", "N", "M", "<", ">", "?", "CAP"],
-                ["SPC"]
+                ["SPC"],
+                ["ENT"]
             ],
             [
                 ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0", "-", "="],
                 ["q", "w", "e", "r", "t", "y", "u", "i", "o", "p", "<--"],
-                ["a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'", "ENT"],
+                ["a", "s", "d", "f", "g", "h", "j", "k", "l", ";", "'"],
                 ["z", "x", "c", "v", "b", "n", "m", ",", ".", "/", "CAP"],
-                ["SPC"]
+                ["SPC"],
+                ["ENT"]
             ]
         ]
 
         self.mode = 0
 
-        self.previous_position_x = 0
-        self.previous_position_y = 0
+        self.previous_position_x = 1200//2
+        self.previous_position_y = 720//2
 
     def find_hands(self, image, draw=True):
         # Convert the image to RGB format
@@ -266,8 +268,8 @@ class HandDetection:
     #             self.plocX, self.plocY = clocX, clocY
 
     def cursor_move(self, image, webcam_width, webcam_height):
-        centre_x = webcam_width // 2
-        centre_y = webcam_height // 2
+        # centre_x = webcam_width // 2
+        # centre_y = webcam_height // 2
 
         # rect_width = 200
         # rect_height = 100
@@ -291,16 +293,16 @@ class HandDetection:
                 # dx = 50 if current_x > self.previous_position_x else -50
                 # dy = 30 if current_y > self.previous_position_y else -30
                 if current_x > self.previous_position_x + 10:
-                    dx = 100
+                    dx = -50
                 elif current_x < self.previous_position_x - 10:
-                    dx = -100
+                    dx = 50
                 else:
                     dx = 0
 
                 if current_y > self.previous_position_y + 10:
-                    dy = 100
+                    dy = 50
                 elif current_y < self.previous_position_y - 10:
-                    dy = -100
+                    dy = -50
                 else:
                     dy = 0
 
@@ -330,7 +332,8 @@ class HandDetection:
 
             elif self.fingers[0] == 0 and self.fingers[1] == 1 and self.fingers[2] == 1 and self.fingers[3] == 0 and \
                     self.fingers[4] == 1:
-                pyautogui.doubleClick(x=None, y=None, interval=0.5)
+                pyautogui.doubleClick(x=None, y=None, interval=0)
+                time.sleep(0.3)
                 print("double click")
 
     def scroll(self):
@@ -502,9 +505,8 @@ class HandDetection:
                               cv2.FILLED)
                 cv2.putText(image, f"mode {self.mode}", (text_x, text_y), font, text_scale, text_color, text_thickness)
 
-                _, l, _ = self.find_distance(image, 8, 12, draw=False)
                 # when clicked
-                if l < 50:
+                if self.fingers[1] and not self.fingers[2]:
                     self.mode = (self.mode + 1) % 4
                     time.sleep(0.5)
 
