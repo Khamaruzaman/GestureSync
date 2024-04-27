@@ -199,7 +199,7 @@ class HandDetection:
                         cv2.rectangle(image, (50, int(vol_bar)), (85, 400), (255, 0, 0), cv2.FILLED)
 
                         current_volume = int(volume.GetMasterVolumeLevelScalar() * 100)
-                        cv2.putText(image, f'Volume: {current_volume}', (400, 50), cv2.FONT_HERSHEY_PLAIN,
+                        cv2.putText(image, f'Volume: {current_volume}', (1000, 50), cv2.FONT_HERSHEY_PLAIN,
                                     2, (255, 0, 0), 2)
 
         return image
@@ -244,7 +244,7 @@ class HandDetection:
                         cv2.rectangle(image, (50, int(bri_bar)), (85, 400), (255, 0, 255), cv2.FILLED)
 
                         current_brightness = sbc.get_brightness()
-                        cv2.putText(image, f'Brightness: {current_brightness}', (400, 50), cv2.FONT_HERSHEY_PLAIN,
+                        cv2.putText(image, f'Brightness: {current_brightness}', (950, 50), cv2.FONT_HERSHEY_PLAIN,
                                     2, (255, 0, 255), 2)
 
         return image
