@@ -49,7 +49,7 @@ class HandControlApp:
                 image = detector.brightness_controller(image)
             elif detector.mode == 2:
                 # cv2.circle(image, (webcam_width // 2, webcam_height // 2), 10, (255, 0, 0))
-                image = detector.cursor_move(image, self.webcam_width, self.webcam_height)
+                image = detector.cursor_move(image)
                 detector.click()
                 detector.scroll()
                 # detector.click_and_drag()

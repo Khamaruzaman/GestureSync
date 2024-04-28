@@ -267,7 +267,7 @@ class HandDetection:
     #             autopy.mouse.move(clocX, clocY)
     #             self.plocX, self.plocY = clocX, clocY
 
-    def cursor_move(self, image, webcam_width, webcam_height):
+    def cursor_move(self, image):
         # centre_x = webcam_width // 2
         # centre_y = webcam_height // 2
 
@@ -419,6 +419,8 @@ class HandDetection:
         if self.list_of_lm:
             if not self.caps:
                 keyboard.press("shift")
+            else:
+                keyboard.release("shift")
             # print(button_list[0].text, button_list[0].size, button_list[0].pos)
             # print(lmList[8][1], lmList[8][2])
             for button in button_list:
@@ -432,19 +434,22 @@ class HandDetection:
 
                     # print(l)
 
-                    _, l, _ = self.find_distance(image, 8, 12, draw=False)
+                    # _, l, _ = self.find_distance(image, 8, 12, draw=False)
                     # when clicked
                     # if l < 50:
                     if self.fingers[1] and not self.fingers[2]:
-                        if len(button.text) == 1:
-                            keyboard.send(button.text)
-                        elif button.text == "SPC":
+                        letter = str(button.text)
+                        if len(letter) == 1:
+                            if not letter.islower():
+                                letter = letter.lower()
+                            keyboard.send(letter)
+                        elif letter == "SPC":
                             keyboard.press("space")
-                        elif button.text == "<--":
+                        elif letter == "<--":
                             keyboard.press("backspace")
-                        elif button.text == "ENT":
+                        elif letter == "ENT":
                             keyboard.press("enter")
-                        elif button.text == "CAP":
+                        elif letter == "CAP":
                             self.caps = (self.caps + 1) % 2
                             # if keyboard.is_pressed("caps_lock"):
                             #     keyboard.press("caps_lock")
