@@ -56,7 +56,7 @@ You can add or modify gestures in the `gesture_detection.py` file, where you def
 ## Configuration
 
 - **Camera Source**: Modify the camera source in `main.py` if you want to use a different camera.
-- **Hand Landmarks and Actions**: Customize actions based on hand landmarks by modifying the methods in `gesture_detection.py`.
+- **Hand Landmarks and Actions**: Customize actions based on hand landmarks by modifying the methods in `HandDetectionModule.py`.
 
 ## Contributing
 
