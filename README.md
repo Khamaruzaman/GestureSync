@@ -51,7 +51,7 @@ To set up GestureSync, ensure you have Python installed and follow these steps:
 
 ### Example Gesture Code
 
-You can add or modify gestures in the `gesture_detection.py` file, where you define specific hand poses or movements for different commands.
+You can add or modify gestures in the `HandDetectionModule.py` file, where you define specific hand poses or movements for different commands.
 
 ## Configuration
 
